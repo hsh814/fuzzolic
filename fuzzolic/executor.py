@@ -21,8 +21,8 @@ import minimizer_qsym
 import minimizer
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-SOLVER_SMT_BIN = SCRIPT_DIR + '/../solver/solver-smt'
-SOLVER_FUZZY_BIN = SCRIPT_DIR + '/../solver/solver-fuzzy'
+SOLVER_SMT_BIN = SCRIPT_DIR + '/../solver/build/solver-smt'
+SOLVER_FUZZY_BIN = SCRIPT_DIR + '/../solver/build/solver-fuzzy'
 TRACER_BIN = SCRIPT_DIR + '/../tracer/x86_64-linux-user/qemu-x86_64'
 
 if 'AFL_PATH' not in os.environ:

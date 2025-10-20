@@ -12,7 +12,7 @@
 #include "debug-config.h"
 #include "solver.h"
 #include "i386.h"
-#include "fuzzy-sat/z3-fuzzy.h"
+#include "fuzzy-sat/build/include/z3-fuzzy.h"
 
 
 #define EXPR_QUEUE_POLLING_TIME_SECS 0
@@ -5247,7 +5247,10 @@ static inline int smt_check_z3(Query* q, Z3_ast z3_neg_query, GHashTable* inputs
 #endif
     int is_sat = 0;
 #if !DISABLE_SMT
-    printf("Running a query with Z3...\n");
+#if VERBOSE
+    printf("Running a query with Z3 %u...\n", GET_QUERY_IDX(q));
+    print_z3_ast(z3_neg_query);
+#endif
     is_sat = smt_query_check(solver, GET_QUERY_IDX(q), 0);
 #if CHECK_FUZZY_MISPREDICTIONS
     if (is_sat) {

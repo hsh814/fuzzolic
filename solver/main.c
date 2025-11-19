@@ -12,7 +12,7 @@
 #include "debug-config.h"
 #include "solver.h"
 #include "i386.h"
-#include "fuzzy-sat/build/include/z3-fuzzy.h"
+#include "fuzzy-sat/lib/z3-fuzzy.h"
 
 
 #define EXPR_QUEUE_POLLING_TIME_SECS 0
@@ -1599,7 +1599,7 @@ static inline Z3_decl_kind get_op(Z3_app app)
     return Z3_get_decl_kind(smt_solver.ctx, decl);
 }
 
-#define VERBOSE 0
+#define VERBOSE 1
 void smt_bv_resize(Z3_ast* a, Z3_ast* b, ssize_t bytes_size)
 {
 #if VERBOSE
@@ -1708,7 +1708,6 @@ void smt_bv_resize(Z3_ast* a, Z3_ast* b, ssize_t bytes_size)
     smt_print_ast_sort(*b);
 #endif
 }
-#undef VERBOSE
 
 Z3_ast smt_to_bv(Z3_ast e) { return smt_to_bv_n(e, 8); }
 
@@ -3911,7 +3910,6 @@ GHashTable* merge_inputs(GHashTable* a, GHashTable* b)
     return merged;
 }
 
-#define VERBOSE 0
 Z3_ast smt_query_to_z3(Expr* query, uintptr_t is_const_value, size_t width,
                        GHashTable** inputs)
 {
@@ -7155,7 +7153,12 @@ static void smt_query(Query* q)
         print_expr(q->query);
     }
 #endif
-
+    fprintf(stderr, "[query] [index %lu] [addr %p] [op %s] [model %d]\n",  
+        GET_QUERY_IDX(q), q->address,
+        opkind_to_str(q->query->opkind), q->model);
+    print_expr(q->query);
+    fprintf(stderr, "\n[query-end]\n");
+    
     switch (q->query->opkind) {
         case SYMBOLIC_PC:
             // printf("\nSymbolic PC\n");

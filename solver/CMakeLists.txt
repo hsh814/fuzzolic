@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.7)
 
 project(Solver)
 
-# fuzzy-sat(내부 수정된 Z3 포함) 서브디렉토리를 포함
+# fuzzy-sat
 add_subdirectory(fuzzy-sat)
 
 add_executable(solver-smt main.c i386.c branch_coverage.c opts.c xxHash/xxhash.c)

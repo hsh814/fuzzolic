@@ -24,12 +24,12 @@ fooend:
 
 run:
 	@echo "Running tests using SMT solver"
-	@python3 -m pytest run.py
+	@uv run pytest run.py
 	@echo "\nRunning tests using Fuzzy-SAT solver"
-	@python3 -m pytest --fuzzy run.py
+	@uv run pytest --fuzzy run.py
 
 run-verbose:
-	python3 -m pytest -v -s run.py
+	uv run pytest -v -s run.py
 
 list:
 	find workdir/fuzzolic-00000/ -name test* -type f -print | xargs -I '{}' xxd '{}'

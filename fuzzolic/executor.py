@@ -23,7 +23,7 @@ import minimizer
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 SOLVER_SMT_BIN = SCRIPT_DIR + '/../solver/build/solver-smt'
 SOLVER_FUZZY_BIN = SCRIPT_DIR + '/../solver/build/solver-fuzzy'
-TRACER_BIN = SCRIPT_DIR + '/../tracer/x86_64-linux-user/qemu-x86_64'
+TRACER_BIN = SCRIPT_DIR + '/../tracer/build/x86_64-linux-user/qemu-x86_64'
 
 if 'AFL_PATH' not in os.environ:
     AFL_PATH = SCRIPT_DIR + '/../../AFLplusplus/'

@@ -1,4 +1,7 @@
 old
-*o
 driver
 example/example
+tmp/
+
+*.o
+*.asm

@@ -38,8 +38,10 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv venv && uv sync
 
-ENV VIRTUAL_ENV=/app/.venv
+ENV VIRTUAL_ENV=/root/fuzzolic/.venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+RUN apt-get install -y openssh-server
 COPY . .
 
 # Build QEMU tracer
@@ -49,22 +51,22 @@ RUN cd tracer && mkdir build && cd build && ../configure --target-list=x86_64-li
 RUN cd solver && mkdir build && cd build && cmake .. && make -j 32
 
 # Set environment vars for Z3
-ENV C_INCLUDE_PATH=/root/fuzzolic/solver/fuzzy-sat/fuzzolic-z3/build/dist/include
-ENV LIBRARY_PATH=/root/fuzzolic/solver/fuzzy-sat/fuzzolic-z3/build/dist/lib
-ENV LD_LIBRARY_PATH=/root/fuzzolic/solver/fuzzy-sat/fuzzolic-z3/build/dist/lib
-ENV BASH_ENV=/root/.bashrc
-RUN echo "export C_INCLUDE_PATH=/root/fuzzolic/solver/fuzzy-sat/fuzzolic-z3/build/dist/include" >> $BASH_ENV
-RUN echo "export LIBRARY_PATH=/root/fuzzolic/solver/fuzzy-sat/fuzzolic-z3/build/dist/lib" >> $BASH_ENV
-RUN echo "export LD_LIBRARY_PATH=/root/fuzzolic/solver/fuzzy-sat/fuzzolic-z3/build/dist/lib" >> $BASH_ENV
+# ENV C_INCLUDE_PATH=/root/fuzzolic/solver/fuzzy-sat/fuzzolic-z3/build/dist/include
+# ENV LIBRARY_PATH=/root/fuzzolic/solver/fuzzy-sat/fuzzolic-z3/build/dist/lib
+# ENV LD_LIBRARY_PATH=/root/fuzzolic/solver/fuzzy-sat/fuzzolic-z3/build/dist/lib
+# ENV BASH_ENV=/root/.bashrc
+# RUN echo "export C_INCLUDE_PATH=/root/fuzzolic/solver/build/fuzzolic-z3/build/dist/include" >> $BASH_ENV
+# RUN echo "export LIBRARY_PATH=/root/fuzzolic/solver/build/fuzzolic-z3/build/dist/lib" >> $BASH_ENV
+# RUN echo "export LD_LIBRARY_PATH=/root/fuzzolic/solver/build/fuzzolic-z3/build/dist/lib" >> $BASH_ENV
 
 
 # Build AFL++
-RUN cd utils && git clone https://github.com/AFLplusplus/AFLplusplus.git && \
-	cd AFLplusplus && git checkout 2dac4e7 && \
-	git apply ../afl-showmap.c.patch && \
-	make -j `nproc` all && cd qemu_mode && ./build_qemu_support.sh
-ENV AFL_PATH=/root/fuzzolic/utils/AFLplusplus
-RUN echo "export AFL_PATH=/root/fuzzolic/utils/AFLplusplus" >> $BASH_ENV
+# RUN cd utils && git clone https://github.com/AFLplusplus/AFLplusplus.git && \
+# 	cd AFLplusplus && git checkout 2dac4e7 && \
+# 	git apply ../afl-showmap.c.patch && \
+# 	make -j `nproc` all && cd qemu_mode && ./build_qemu_support.sh
+# ENV AFL_PATH=/root/fuzzolic/utils/AFLplusplus
+# RUN echo "export AFL_PATH=/root/fuzzolic/utils/AFLplusplus" >> $BASH_ENV
 
 # Build fuzzolic tests
 RUN cd tests && make

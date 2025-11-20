@@ -61,12 +61,12 @@ RUN cd solver && mkdir build && cd build && cmake .. && make -j 32
 
 
 # Build AFL++
-# RUN cd utils && git clone https://github.com/AFLplusplus/AFLplusplus.git && \
-# 	cd AFLplusplus && git checkout 2dac4e7 && \
-# 	git apply ../afl-showmap.c.patch && \
-# 	make -j `nproc` all && cd qemu_mode && ./build_qemu_support.sh
-# ENV AFL_PATH=/root/fuzzolic/utils/AFLplusplus
-# RUN echo "export AFL_PATH=/root/fuzzolic/utils/AFLplusplus" >> $BASH_ENV
+RUN cd utils && git clone https://github.com/AFLplusplus/AFLplusplus.git && \
+	cd AFLplusplus && git checkout 2dac4e7 && \
+	git apply ../afl-showmap.c.patch && \
+	make -j `nproc` all && cd qemu_mode && ./build_qemu_support.sh
+ENV AFL_PATH=/root/fuzzolic/utils/AFLplusplus
+RUN echo "export AFL_PATH=/root/fuzzolic/utils/AFLplusplus" >> $BASH_ENV
 
 # Build fuzzolic tests
 RUN cd tests && make

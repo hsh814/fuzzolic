@@ -19,6 +19,7 @@ import resource
 
 import minimizer_qsym
 import minimizer
+import logger
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 SOLVER_SMT_BIN = SCRIPT_DIR + '/../solver/build/solver-smt'
@@ -66,6 +67,7 @@ class Executor(object):
         if not os.path.exists(output_dir):
             sys.exit('ERROR: invalid working directory')
         self.output_dir = os.path.abspath(output_dir)
+        logger.set_file(os.path.join(self.output_dir, 'fuzzolic.log'))        
 
         if not os.path.exists(input):
             sys.exit('ERROR: invalid input')
@@ -75,7 +77,7 @@ class Executor(object):
         if False and os.path.exists(self.__get_root_dir() + '/../branch_bitmap'):
             os.system("cp " + self.__get_root_dir() + '/../branch_bitmap'  + " "+ self.global_bitmap)
             # os.system("cp " + self.__get_root_dir() + '/../context_bitmap'  + " " + self.__get_root_dir() + '/context_bitmap')
-            print("Importing from parent")
+            logger.info("Importing from parent")
         else:
             os.system("touch " + self.global_bitmap)
 
@@ -143,7 +145,7 @@ class Executor(object):
     def __load_config(self):
         config = {}
         if not os.path.exists(self.binary + '.fuzzolic'):
-            print(
+            logger.info(
                 'Configuration file for %s is missing. Using default configuration.' % self.binary)
             config['SYMBOLIC_INJECT_INPUT_MODE'] = "FROM_FILE"
         else:
@@ -207,10 +209,10 @@ class Executor(object):
 
     def get_solver_bin(self, force_smt=False):
         if self.fuzzy and not force_smt:
-            print("Using Fuzzy-SAT solver")
+            logger.info("Using Fuzzy-SAT solver")
             return SOLVER_FUZZY_BIN
         else:
-            print("Using SMT solver")
+            logger.info("Using SMT solver")
             return SOLVER_SMT_BIN
 
     def fuzz_one(self, testcase, target, force_smt=False):
@@ -223,7 +225,7 @@ class Executor(object):
         os.system("cp " + testcase + " " + run_dir)
         #testcase = run_dir + "/" + os.path.basename(testcase)
 
-        print('\nRunning directory: %s' % run_dir)
+        logger.info('\nRunning directory: %s' % run_dir)
 
         env = os.environ.copy()
         for c in self.config:
@@ -243,7 +245,7 @@ class Executor(object):
         env['QUERY_SHM_KEY'] = hex(random.getrandbits(32))
         env['BITMAP_SHM_KEY'] = hex(random.getrandbits(32))
         if self.timeout > 0:
-            # print("Setting solving timeout: %s" % self.timeout)
+            # logger.info("Setting solving timeout: %s" % self.timeout)
             env['SOLVER_TIMEOUT'] = str(self.timeout)
 
         if self.fuzz_expr:
@@ -288,6 +290,8 @@ class Executor(object):
                 p_solver_args += [ '-s' ]
             if self.address_reasoning:
                 p_solver_args += [ '-a' ]
+            
+            logger.info(f"[FUZZOLIC] Starting solver with args: {' '.join(p_solver_args)}")
 
             if self.debug == 'gdb_solver':
                 p_solver = subprocess.Popen(['gdb'] + p_solver_args[0:1],
@@ -306,7 +310,7 @@ class Executor(object):
                     p_solver.wait(5)
                 except:
                     pass
-                print("GDB command: %s" % gdb_cmd)
+                logger.info("GDB command: %s" % gdb_cmd)
                 p_solver.stdin.write("break exit\n".encode())
                 p_solver.stdin.write(gdb_cmd.encode())
                 # p_solver.stdin.close()
@@ -349,10 +353,9 @@ class Executor(object):
             p_tracer_args += [self.binary]
             p_tracer_args += args
 
-        # print(p_tracer_args)
         if self.plt_info:
             env["PLT_INFO_FILE"] = self.plt_info
-
+        logger.info(f"[FUZZOLIC] Starting tracer for {self.binary} with args: {' '.join(p_tracer_args)}")
         p_tracer = subprocess.Popen(p_tracer_args,
                                     # stdout=p_tracer_log if not self.debug and not self.fuzz_expr else None,
                                     # stderr=subprocess.STDOUT if not self.debug and not self.fuzz_expr else None,
@@ -367,8 +370,6 @@ class Executor(object):
                                     )
         RUNNING_PROCESSES.append(p_tracer)
 
-        # print("\n Tracer started")
-
         # emit testcate on stdin
         if self.debug != 'gdb_tracer':
             if self.testcase_from_stdin:
@@ -381,44 +382,44 @@ class Executor(object):
             if self.testcase_from_stdin:
                 gdb_cmd += ' < ' + testcase
             gdb_cmd += "\n"
-            print("GDB command: %s" % gdb_cmd)
+            logger.info("GDB command: %s" % gdb_cmd)
             p_tracer.stdin.write(gdb_cmd.encode())
             for line in sys.stdin:
-                #print("Sending to gdb: " + line)
+                #logger.info("Sending to gdb: " + line)
                 p_tracer.stdin.write(line.encode())
                 if 'quit' in line or line.startswith('q'):
-                    print("Closing stdin in gdb")
+                    logger.info("Closing stdin in gdb")
                     break
             p_tracer.stdin.close()
 
         try:
             p_tracer.wait(20)
         except subprocess.TimeoutExpired:
-            print('[FUZZOLIC] Sending SIGINT to tracer.')
+            logger.info('[FUZZOLIC] Sending SIGINT to tracer.')
             p_tracer.send_signal(signal.SIGINT)
             try:
                 p_tracer.wait(1)
             except subprocess.TimeoutExpired:
-                print('[FUZZOLIC] Sending SIGKILL to tracer.')
+                logger.info('[FUZZOLIC] Sending SIGKILL to tracer.')
                 p_tracer.send_signal(signal.SIGKILL)
                 p_tracer.wait()
 
         if p_tracer in RUNNING_PROCESSES:
             RUNNING_PROCESSES.remove(p_tracer)
-        # print("Tracer completed")
+        # logger.info("Tracer completed")
         p_tracer_log.close()
 
         if self.debug == 'gdb_solver':
             for line in sys.stdin:
                 p_solver.stdin.write(line.encode())
                 if 'quit' in line or line.startswith('q'):
-                    print("Closing stdin in gdb")
+                    logger.info("Closing stdin in gdb")
                     break
             p_solver.stdin.close()
 
         if p_tracer.returncode != 0:
             returncode_str = "(SIGSEGV)" if p_tracer.returncode == -11 else ""
-            print("ERROR: tracer has returned code %d %s" %
+            logger.warning("ERROR: tracer has returned code %d %s" %
                   (p_tracer.returncode, returncode_str))
 
         if self.debug != 'no_solver' and self.debug != 'coverage':
@@ -438,7 +439,7 @@ class Executor(object):
                     p_solver.wait(SOLVER_TIMEOUT / 1000)
                     break
                 except subprocess.TimeoutExpired:
-                    # print("Elapsed %s secs (timeout: %s, elapsed: %s)"  % ((SOLVER_TIMEOUT / 1000), self.timeout, elapsed)) 
+                    # logger.info("Elapsed %s secs (timeout: %s, elapsed: %s)"  % ((SOLVER_TIMEOUT / 1000), self.timeout, elapsed)) 
                     pass
                 elapsed += SOLVER_TIMEOUT
                 if self.timeout > 0 and elapsed > (self.timeout + 10000):
@@ -446,12 +447,12 @@ class Executor(object):
                     break
 
             if SHUTDOWN or timeout:
-                print('[FUZZOLIC] Solver is taking too long. Let us stop it.')
+                logger.info('[FUZZOLIC] Solver is taking too long. Let us stop it.')
                 p_solver.send_signal(signal.SIGUSR2)
                 try:
                     p_solver.wait(SOLVER_TIMEOUT)
                 except subprocess.TimeoutExpired:
-                    print('[FUZZOLIC] Solver will be killed.')
+                    logger.info('[FUZZOLIC] Solver will be killed.')
                     p_solver.send_signal(signal.SIGKILL)
                     p_solver.wait()
 
@@ -474,7 +475,7 @@ class Executor(object):
             if shm_id > 0:
                 r = self.libc.shmctl(ctypes.c_int(
                     shm_id), ctypes.c_int(IPC_RMID), ctypes.c_int(0))
-                print("Shared memory detach on (%s, %s): %s" %
+                logger.info("Shared memory detach on (%s, %s): %s" %
                       (shm_key, shm_id, r))
 
         # parse tracer logs for known errors/warnings
@@ -519,7 +520,7 @@ class Executor(object):
             if self.input_fixed_name:
                 _, file_extension = os.path.splitext(self.input_fixed_name)
                 file_extension = file_extension[1:]
-                # print("File extensions: %s" % file_extension)
+                # logger.info("File extensions: %s" % file_extension)
             r = self.minimizer.check_testcases(run_dir, global_bitmap_pre_run, f_ext=file_extension)
             k = 0
             for t in r:
@@ -542,7 +543,17 @@ class Executor(object):
         os.unlink(global_bitmap_pre_run)
 
         if p_tracer.returncode == -11:
-            sys.exit(-11)
+            with open(p_tracer_log_name, "r") as f:
+                log_lines = f.readlines()
+                qemu_segfault = True
+                for line in log_lines:
+                    if "qemu: uncaught target signal 11 (Segmentation fault)" in line:
+                        logger.info("[FUZZOLIC] [info] Target program crashed with SIGSEGV.")
+                        qemu_segfault = False
+                        break
+                if qemu_segfault:
+                    logger.info("[FUZZOLIC] [error] QEMU tracer crashed with SIGSEGV.")
+                    sys.exit(-11)
         if self.debug != 'no_solver' and self.debug != 'coverage' and p_solver.returncode == -6:
             sys.exit(-11)
 
@@ -561,12 +572,12 @@ class Executor(object):
             self.__get_testcases_dir() + "/*.dat")
         for kt in known_tests:
             if filecmp.cmp(kt, t, shallow=False):
-                print('Discarding %s since it is a duplicate (%s)' % (t, kt))
+                logger.info('Discarding %s since it is a duplicate (%s)' % (t, kt))
                 discard = True
                 break
 
         if not discard:
-            print("Importing %s with id=%s_%s" % (t, run_id, k))
+            logger.info("Importing %s with id=%s_%s" % (t, run_id, k))
             self.__import_test_case(
                 t, 'test_case_' + str(run_id) + '_' + str(k) + '.dat')
 
@@ -578,13 +589,13 @@ class Executor(object):
 
     def __check_testcase_afl(self, t, run_id, k, target, global_bitmap_pre_run=None):
         if self.minimizer.check_testcase(t, global_bitmap_pre_run):
-            # print("Importing %s" % t)
+            # logger.info("Importing %s" % t)
             target = os.path.basename(target)[:len("id:......")]
             name = "id:%06d,src:%s" % (self.tick(), target)
             self.__import_test_case(t, name)
             return True
         else:
-            # print('Discarding %s since it is not interesting.' % t)
+            # logger.info('Discarding %s since it is not interesting.' % t)
             return False
 
     def __import_test_case(self, testcase, name):
@@ -620,14 +631,14 @@ class Executor(object):
             while len(queued_inputs) == 0:
                 waiting_rounds += 1
                 if waiting_rounds > 0 and waiting_rounds % 300 == 0:
-                    print("Waiting for a new input from AFL (%s secs)\n" %
+                    logger.info("Waiting for a new input from AFL (%s secs)\n" %
                           ((waiting_rounds - reported_waiting_rounds) * 0.1))
                     reported_waiting_rounds = waiting_rounds
                 time.sleep(0.1)
                 queued_inputs = self.__import_from_afl()
 
             if waiting_rounds > 0:
-                print("\nWaited %s seconds for a new input from AFL\n" %
+                logger.info("\nWaited %s seconds for a new input from AFL\n" %
                       ((waiting_rounds - reported_waiting_rounds) * 0.1))
 
             while not os.path.exists(queued_inputs[0]):
@@ -682,7 +693,8 @@ class Executor(object):
             elif len(queued_inputs) > 1:
                 # sort the queue
                 queued_inputs.sort(key=lambda x: os.path.getmtime(x))
-
+            
+            logger.info(f"[FUZZOLIC] Picked testcase {queued_inputs[0]} from queue. {queued_inputs}")
             shutil.copy2(queued_inputs[0], self.cur_input)
 
             # remove from the queue
@@ -723,16 +735,17 @@ class Executor(object):
             start = time.time()
             self.fuzz_one(testcase, target)
             end = time.time()
-            print("Run took %s secs" % round(end-start, 1))
-            if self.debug or self.fuzz_expr or self.single_path:
-                return
+            logger.info("Run took %s secs" % round(end-start, 1))
+            # if self.debug or self.fuzz_expr or self.single_path:
+            #     return
             self.__check_shutdown_flag()
             testcase, target, force_smt = self.__pick_testcase()
             self.__check_shutdown_flag()
+            logger.info(f"[FUZZOLIC] testcase: {testcase}")
 
-        print("[FUZZOLIC] no more testcase. Finishing.\n")
+        logger.info("[FUZZOLIC] no more testcase. Finishing.\n")
 
         if len(self.__warning_log):
-            print()
+            logger.info()
         for w in self.__warning_log:
-            print(w)
+            logger.info(w)

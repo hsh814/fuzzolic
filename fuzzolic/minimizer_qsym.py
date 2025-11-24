@@ -13,6 +13,7 @@ import struct
 import hashlib
 import os
 import glob
+import logger
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -103,11 +104,11 @@ class TestcaseMinimizer(object):
 
     def initialize_bitmap(self, filename, map_size):
         if os.path.exists(filename):
-            # print("Importing existing bitmap for minimizer")
+            # logger.info("Importing existing bitmap for minimizer")
             bitmap = read_bitmap_file(filename)
             assert len(bitmap) == map_size
         else:
-            # print("Initializing bitmap for minimizer")
+            # logger.info("Initializing bitmap for minimizer")
             bitmap = [0] * map_size
             write_bitmap_file(filename, bitmap)
         return bitmap
@@ -149,7 +150,7 @@ class TestcaseMinimizer(object):
 
                 if ".crash" in f:
                     interesting = True
-                    print("[FUZZOLIC] FOUND CRASH!!!")
+                    logger.info("[FUZZOLIC] FOUND CRASH!!!")
                     #interesting = self.is_interesting_testcase_fork(f, self.crash_bitmap_file)
                     f = f.replace(".crash", '')
                 else:
@@ -159,9 +160,9 @@ class TestcaseMinimizer(object):
 
                 if not no_msg:
                     if interesting:
-                        print("[+] Keeping %s" % os.path.basename(f))
+                        logger.info("[+] Keeping %s" % os.path.basename(f))
                     else:
-                        print("[-] Discarding %s" % os.path.basename(f))
+                        logger.info("[-] Discarding %s" % os.path.basename(f))
         return res
 
     def check_testcase(self, testcase, global_bitmap_pre_run=None, no_msg=False):
@@ -169,9 +170,9 @@ class TestcaseMinimizer(object):
         """
         hash = get_hash(testcase)
         assert hash is not None
-        print("Hash is %s"  % hash)
+        logger.info("Hash is %s"  % hash)
         if hash in self.hash_files:
-            print("Duplicate testcase")
+            logger.info("Duplicate testcase")
             return False
         self.hash_files.add(hash)
         """
@@ -201,13 +202,13 @@ class TestcaseMinimizer(object):
                 os.system("cp %s %s" % (testcase, new_input))
                 input = new_input
                 cmd, stdin = fix_at_file(cmd, input)
-                # print(cmd)
+                # logger.info(cmd)
                 with open(os.devnull, "wb") as devnull:
                     proc = sp.Popen(cmd, stdin=sp.PIPE, stdout=devnull, stderr=devnull, env=env)
                     proc.communicate(stdin)
         else:
             cmd, stdin = fix_at_file(cmd, input)
-            # print(cmd)
+            # logger.info(cmd)
             with open(os.devnull, "wb") as devnull:
                 proc = sp.Popen(cmd, stdin=sp.PIPE, stdout=devnull, stderr=devnull, env=env)
                 proc.communicate(stdin)
@@ -218,9 +219,9 @@ class TestcaseMinimizer(object):
 
         if not no_msg:
             if interesting:
-                print("[+] Keeping %s" % os.path.basename(testcase))
+                logger.info("[+] Keeping %s" % os.path.basename(testcase))
             else:
-                print("[-] Discarding %s" % os.path.basename(testcase))
+                logger.info("[-] Discarding %s" % os.path.basename(testcase))
 
         return interesting
 
@@ -233,7 +234,7 @@ class TestcaseMinimizer(object):
             bitmap,
             my_bitmap_file
         ]
-        # print(cmd)
+        # logger.info(cmd)
 
         with open(os.devnull, "wb") as devnull:
             proc = sp.Popen(cmd, stdin=None, stdout=devnull, stderr=devnull)
@@ -243,10 +244,10 @@ class TestcaseMinimizer(object):
             elif proc.returncode == 2:
                 return False
             else:
-                print("Error while merging bitmap %s [error code %d]" % (bitmap, proc.returncode))
+                logger.info("Error while merging bitmap %s [error code %d]" % (bitmap, proc.returncode))
                 return False
 
-        print("Error while merging bitmap %s" % bitmap)
+        logger.info("Error while merging bitmap %s" % bitmap)
         return False
 
     def is_interesting_testcase(self, bitmap, returncode):
